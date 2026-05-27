@@ -5,7 +5,7 @@
 
 import axios from "axios";
 
-const GRAPH_API_URL = "https://graph.meta.com/v19.0";
+const GRAPH_API_URL = "https://graph.facebook.com/v19.0";
 
 /**
  * Send a plain text message to a WhatsApp user.
