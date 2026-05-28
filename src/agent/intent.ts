@@ -42,8 +42,11 @@ export function detectIntent(text: string): Intent {
   }
 
   // ── Reminders ──────────────────────────────────────────────────────────────
-  // "remind me at 9am: standup" | "remind me in 30 minutes: call doctor"
-  const remindMatch = t.match(/^remind\s+me\s+((?:at|in)\s+[^:]+)[:\s]\s*(.+)/i);
+  // "remind me at 9am: standup" | "remind me at 07:00: pack bag" | "remind me in 30 minutes: call doctor"
+  // NOTE: time is captured explicitly so "at 07:00" doesn't stop at the colon inside the time.
+  const remindMatch = t.match(
+    /^remind\s+me\s+((?:at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?)|(?:in\s+\d+\s+\w+)):\s*(.+)/i
+  );
   if (remindMatch) {
     return {
       tool: "create-reminder",

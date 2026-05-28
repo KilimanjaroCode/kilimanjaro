@@ -13,16 +13,24 @@ const prisma = new PrismaClient();
 // ── Time parsing ──────────────────────────────────────────────────────────────
 
 /**
- * Parse a natural-language time string into an absolute Date.
+ * User timezone: SAST = UTC+2.
+ * Railway server runs in UTC, so all "at HH:MM" times from the user
+ * must be interpreted in SAST and converted to UTC for storage.
+ * "in X minutes/hours" is relative and needs no conversion.
+ */
+const SAST_OFFSET_MS = 2 * 60 * 60 * 1000; // UTC+2
+
+/**
+ * Parse a natural-language time string into an absolute Date (UTC).
  * Supported formats:
  *   "in 30 minutes" | "in 2 hours"
- *   "at 9am" | "at 9:30am" | "at 14:00" | "at 2pm"
+ *   "at 9am" | "at 9:30am" | "at 07:00" | "at 14:30"
  */
 function parseFireAt(timeStr: string): Date | null {
   const now = new Date();
   const t   = timeStr.trim().toLowerCase();
 
-  // "in X minutes/hours"
+  // "in X minutes/hours" — relative, no timezone conversion needed
   const inMatch = t.match(/^in\s+(\d+)\s+(minute|minutes|min|mins|hour|hours|hr|hrs)$/);
   if (inMatch) {
     const amount = parseInt(inMatch[1]);
@@ -30,23 +38,29 @@ function parseFireAt(timeStr: string): Date | null {
     return new Date(now.getTime() + ms);
   }
 
-  // "at 9am" | "at 9:30pm" | "at 14:00"
+  // "at 9am" | "at 9:30pm" | "at 07:00" | "at 14:30"
+  // Treat as SAST (UTC+2) and convert to UTC for storage.
   const atMatch = t.match(/^at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
   if (atMatch) {
-    let hours   = parseInt(atMatch[1]);
-    const mins  = atMatch[2] ? parseInt(atMatch[2]) : 0;
-    const ampm  = atMatch[3];
+    let hours  = parseInt(atMatch[1]);
+    const mins = atMatch[2] ? parseInt(atMatch[2]) : 0;
+    const ampm = atMatch[3];
 
     if (ampm === "pm" && hours < 12) hours += 12;
     if (ampm === "am" && hours === 12) hours = 0;
 
-    const fireAt = new Date(now);
-    fireAt.setHours(hours, mins, 0, 0);
+    // Build the target time in SAST (treat UTC epoch fields as SAST)
+    const nowSAST     = new Date(now.getTime() + SAST_OFFSET_MS);
+    const fireAtSAST  = new Date(nowSAST);
+    fireAtSAST.setUTCHours(hours, mins, 0, 0);
 
-    // If the time has already passed today, fire tomorrow
-    if (fireAt <= now) fireAt.setDate(fireAt.getDate() + 1);
+    // If the time has already passed today in SAST, schedule for tomorrow
+    if (fireAtSAST <= nowSAST) {
+      fireAtSAST.setUTCDate(fireAtSAST.getUTCDate() + 1);
+    }
 
-    return fireAt;
+    // Convert back to UTC for storage
+    return new Date(fireAtSAST.getTime() - SAST_OFFSET_MS);
   }
 
   return null;
