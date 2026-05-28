@@ -8,6 +8,7 @@
 import express from "express";
 import { verifyWebhook } from "./webhook/verify";
 import { receiveWebhook } from "./webhook/receive";
+import { startReminderCron } from "./tools/reminders";
 
 const app  = express();
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
@@ -28,4 +29,7 @@ app.listen(PORT, () => {
   console.log(`🏔️  Kilimanjaro running on port ${PORT}`);
   console.log(`   Webhook: POST /webhook`);
   console.log(`   Health:  GET  /health`);
+
+  // Start background reminder cron — checks every minute for due reminders
+  startReminderCron();
 });

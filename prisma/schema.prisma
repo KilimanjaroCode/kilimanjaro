@@ -1,5 +1,4 @@
 // Kilimanjaro — Prisma schema
-// SQLite database: one User per phone number, many Messages per User
 
 generator client {
   provider = "prisma-client-js"
@@ -11,10 +10,13 @@ datasource db {
 }
 
 model User {
-  id          Int       @id @default(autoincrement())
-  phoneNumber String    @unique
-  createdAt   DateTime  @default(now())
+  id          Int        @id @default(autoincrement())
+  phoneNumber String     @unique
+  createdAt   DateTime   @default(now())
   messages    Message[]
+  notes       Note[]
+  reminders   Reminder[]
+  invoices    Invoice[]
 }
 
 model Message {
@@ -24,4 +26,33 @@ model Message {
   content   String
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model Note {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  content   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Reminder {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  text      String
+  fireAt    DateTime
+  active    Boolean   @default(true)
+  firedAt   DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+}
+
+model Invoice {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  client      String
+  amount      String
+  description String
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
 }
