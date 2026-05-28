@@ -1,13 +1,13 @@
 /**
  * POST /webhook — Receive incoming WhatsApp messages.
  *
- * Phase 1: Parse the payload, extract the sender + text, echo it back.
- * Phase 2: Replace echoReply with Claude brain.
+ * Phase 2: Extract sender + text → brain.processMessage → Claude reply sent back.
  */
 
 import { Request, Response } from "express";
 import { WAIncomingMessage } from "../whatsapp/types";
 import { sendMessage } from "../whatsapp/client";
+import { processMessage } from "../agent/brain";
 
 /**
  * Extract the first text message from a WhatsApp webhook payload.
@@ -27,15 +27,6 @@ function extractMessage(body: WAIncomingMessage): { from: string; text: string }
   }
 }
 
-/**
- * Phase 1 reply: echo the message back with a prefix.
- * Will be replaced by Claude brain in Phase 2.
- */
-async function echoReply(from: string, text: string): Promise<void> {
-  const reply = `🏔️ Kilimanjaro echo: ${text}`;
-  await sendMessage(from, reply);
-}
-
 export async function receiveWebhook(req: Request, res: Response): Promise<void> {
   // Always respond 200 immediately — Meta will retry if it doesn't get a fast ack
   res.sendStatus(200);
@@ -51,9 +42,10 @@ export async function receiveWebhook(req: Request, res: Response): Promise<void>
   console.log(`📩 From ${message.from}: ${message.text}`);
 
   try {
-    await echoReply(message.from, message.text);
-    console.log(`✅ Echo sent to ${message.from}`);
+    const reply = await processMessage(message.from, message.text);
+    await sendMessage(message.from, reply);
+    console.log(`✅ Reply sent to ${message.from}: ${reply.substring(0, 60)}...`);
   } catch (err) {
-    console.error(`❌ Failed to send reply:`, err instanceof Error ? err.message : err);
+    console.error(`❌ Failed to process or send reply:`, err instanceof Error ? err.message : err);
   }
 }
