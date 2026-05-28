@@ -43,9 +43,11 @@ export function detectIntent(text: string): Intent {
 
   // ── Reminders ──────────────────────────────────────────────────────────────
   // "remind me at 9am: standup" | "remind me at 07:00: pack bag" | "remind me in 30 minutes: call doctor"
-  // NOTE: time is captured explicitly so "at 07:00" doesn't stop at the colon inside the time.
+  // NOTE 1: time is captured explicitly so "at 07:00" doesn't stop at the colon inside the time.
+  // NOTE 2: separator requires ":\s+" (colon + space) so typos like "06:450:" can't backtrack
+  //         into a valid match — they fall through to Claude which replies with the correct format.
   const remindMatch = t.match(
-    /^remind\s+me\s+((?:at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?)|(?:in\s+\d+\s+\w+)):\s*(.+)/i
+    /^remind\s+me\s+((?:at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?)|(?:in\s+\d+\s+\w+)):\s+(.+)/i
   );
   if (remindMatch) {
     return {
